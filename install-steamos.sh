@@ -393,8 +393,8 @@ configure_system() {
     # Generate fstab
     genfstab -U /mnt >> /mnt/etc/fstab
     
-    # Create chroot configuration script
-    cat > /mnt/root/configure.sh <<'CHROOT_EOF'
+    # Create chroot configuration script - NOTE: Using double quotes on EOF delimiter
+    cat > /mnt/root/configure.sh <<"CHROOT_EOF"
 #!/bin/bash
 set -e
 
@@ -424,26 +424,29 @@ passwd
 
 # Bootloader
 bootctl install
-cat > /boot/loader/loader.conf <<BOOTLOADER_EOF
+
+# Create loader.conf
+cat > /boot/loader/loader.conf << 'LOADER_EOF'
 default    SteamOS
 timeout    3
 console-mode max
 editor     no
-BOOTLOADER_EOF
+LOADER_EOF
 
 # Detect kernel
-KERNEL_PKG=\$(pacman -Qq | grep '^linux-neptune' | head -1)
-if [ -z "\$KERNEL_PKG" ]; then
+KERNEL_PKG=$(pacman -Qq | grep '^linux-neptune' | head -1)
+if [ -z "$KERNEL_PKG" ]; then
     echo "ERROR: No neptune kernel found!"
     exit 1
 fi
 
-cat > /boot/loader/entries/steamos.conf <<BOOTENTRY_EOF
+# Create boot entry
+cat > /boot/loader/entries/steamos.conf << BOOT_EOF
 title   SteamOS
-linux   /vmlinuz-\${KERNEL_PKG}
-initrd  /initramfs-\${KERNEL_PKG}.img
+linux   /vmlinuz-${KERNEL_PKG}
+initrd  /initramfs-${KERNEL_PKG}.img
 options root="LABEL=SteamOS" rw quiet compress=zstd splash loglevel=3 rd.systemd.show_status=false vt.global_cursor_default=0 rd.udev.log_level=3 nowatchdog clearcpuid=514 amd_iommu=off audit=0 rd.luks=0 rd.lvm=0 rd.md=0 rd.dm=0 log_buf_len=4M amd_pstate=active preempt=full
-BOOTENTRY_EOF
+BOOT_EOF
 
 # Enable services
 systemctl enable NetworkManager bluetooth systemd-resolved sshd upower systemd-timesyncd jupiter-fan-control sddm
@@ -466,7 +469,7 @@ echo "/swap/swapfile none swap defaults 0 0" >> /etc/fstab
 
 # steamos-update stub
 rm -f /usr/bin/steamos-update
-cat > /usr/bin/steamos-update <<'UPDATE_EOF'
+cat > /usr/bin/steamos-update << 'UPDATE_STUB_EOF'
 #!/bin/bash
 if command -v frzr-deploy > /dev/null; then
     if [ "$1" == "check" ]; then
@@ -479,12 +482,12 @@ if command -v frzr-deploy > /dev/null; then
 else
     exit 7
 fi
-UPDATE_EOF
+UPDATE_STUB_EOF
 chmod +x /usr/bin/steamos-update
 
 # steamos-select-branch stub
 rm -f /usr/bin/steamos-select-branch
-cat > /usr/bin/steamos-select-branch <<'BRANCH_EOF'
+cat > /usr/bin/steamos-select-branch << 'BRANCH_STUB_EOF'
 #!/bin/bash
 STEAMOS_BRANCH_SCRIPT="/usr/lib/os-branch-select"
 if [ -f $STEAMOS_BRANCH_SCRIPT ]; then
@@ -492,7 +495,7 @@ if [ -f $STEAMOS_BRANCH_SCRIPT ]; then
 else
     echo "No branch script was found"
 fi
-BRANCH_EOF
+BRANCH_STUB_EOF
 chmod +x /usr/bin/steamos-select-branch
 
 echo "Chroot configuration complete!"
