@@ -116,11 +116,10 @@ setup_wifi() {
 EnableNetworkConfiguration=true
 EOF
 
-    # Restart iwd service
     systemctl restart iwd
     sleep 3
     
-    # Wait for iwd to be ready
+    # Wait for wireless interface
     echo -e "${YELLOW}Waiting for wireless interface...${NC}"
     timeout=30
     while ! iwctl device list 2>/dev/null | grep -q "wlan0" && [ $timeout -gt 0 ]; do
@@ -130,12 +129,10 @@ EOF
     
     if [ $timeout -eq 0 ]; then
         echo -e "${RED}Error: wlan0 not found${NC}"
-        echo -e "${YELLOW}Available devices:${NC}"
-        iwctl device list
         exit 1
     fi
     
-    # Power on the device
+    # Power on device
     iwctl device wlan0 set-property Powered on
     sleep 1
     
@@ -148,68 +145,121 @@ EOF
     echo -e "${YELLOW}Available networks:${NC}"
     iwctl station wlan0 get-networks
     
-    # Connect using iwctl's interactive mode or passphrase file
     echo -e "${YELLOW}Connecting to $WIFI_SSID...${NC}"
     
-    # Method 1: Using expect (if available)
-    if command -v expect &> /dev/null; then
-        expect <<EOF
-set timeout 30
-spawn iwctl station wlan0 connect "$WIFI_SSID"
-expect "Passphrase:"
-send "$WIFI_PASSWORD\r"
-expect eof
-EOF
+    # Create iwd config directory
+    mkdir -p /var/lib/iwd
+    
+    # Convert SSID to hex for filename (iwd requirement for special characters)
+    SSID_HEX=$(echo -n "$WIFI_SSID" | xxd -p | tr -d '\n')
+    
+    # Generate PSK using wpa_passphrase
+    if command -v wpa_passphrase &> /dev/null; then
+        PSK=$(wpa_passphrase "$WIFI_SSID" "$WIFI_PASSWORD" 2>/dev/null | grep '^\s*psk=' | grep -v '#psk' | cut -d'=' -f2)
     else
-        # Method 2: Using wpa_passphrase and iwd config file
-        mkdir -p /var/lib/iwd
-        
-        # Generate PSK
-        PSK=$(wpa_passphrase "$WIFI_SSID" "$WIFI_PASSWORD" | grep -v '#psk' | grep 'psk=' | cut -d'=' -f2)
-        
-        # Create iwd network config
-        cat > "/var/lib/iwd/${WIFI_SSID}.psk" <<EOF
+        echo -e "${RED}wpa_passphrase not found, installing...${NC}"
+        pacman -Sy --noconfirm wpa_supplicant
+        PSK=$(wpa_passphrase "$WIFI_SSID" "$WIFI_PASSWORD" 2>/dev/null | grep '^\s*psk=' | grep -v '#psk' | cut -d'=' -f2)
+    fi
+    
+    if [ -z "$PSK" ]; then
+        echo -e "${RED}Failed to generate PSK${NC}"
+        exit 1
+    fi
+    
+    # Create network config using hex SSID filename
+    cat > "/var/lib/iwd/=${SSID_HEX}.psk" <<EOF
 [Security]
 PreSharedKey=$PSK
 
 [Settings]
 AutoConnect=true
 EOF
-        
-        # Restart iwd to pick up the config
-        systemctl restart iwd
-        sleep 3
-        
-        # Connect
-        iwctl station wlan0 connect "$WIFI_SSID"
-    fi
     
-    # Wait for connection
+    # Also try the regular filename as fallback
+    # Escape dots and spaces for filename
+    SSID_SAFE=$(echo "$WIFI_SSID" | sed 's/\./_/g' | sed 's/ /_/g')
+    cat > "/var/lib/iwd/${SSID_SAFE}.psk" <<EOF
+[Security]
+PreSharedKey=$PSK
+
+[Settings]
+AutoConnect=true
+EOF
+    
+    # Restart iwd to pick up configs
+    systemctl restart iwd
+    sleep 3
+    
+    # Try to connect
+    iwctl station wlan0 connect "$WIFI_SSID" &>/dev/null &
+    
+    # Wait and verify connection
     echo -e "${YELLOW}Waiting for connection...${NC}"
-    sleep 5
-    
-    # Verify connection
-    attempt=0
-    max_attempts=10
-    while [ $attempt -lt $max_attempts ]; do
+    for i in {1..20}; do
         if ping -c 1 -W 2 8.8.8.8 &> /dev/null; then
             echo -e "${GREEN}✓ WiFi connected successfully${NC}"
+            # Show connection info
+            ip addr show wlan0 | grep "inet " | awk '{print "  IP Address: " $2}'
             return 0
         fi
-        ((attempt++))
-        echo -e "${YELLOW}Attempt $attempt/$max_attempts...${NC}"
         sleep 2
+        echo -n "."
     done
-    
-    # Connection failed
-    echo -e "${RED}WiFi connection failed!${NC}"
-    echo -e "${YELLOW}Current status:${NC}"
-    iwctl station wlan0 show
     echo ""
-    echo -e "${YELLOW}Please check:${NC}"
-    echo "  - SSID is correct: $WIFI_SSID"
-    echo "  - Password is correct"
-    echo "  - Network is in range"
+    
+    # Connection failed - try manual connection
+    echo -e "${YELLOW}Automatic connection failed, trying manual method...${NC}"
+    
+    # Kill any existing connection attempts
+    pkill iwctl 2>/dev/null || true
+    
+    # Try using wpa_supplicant as fallback
+    echo -e "${YELLOW}Trying wpa_supplicant...${NC}"
+    
+    # Create wpa_supplicant config
+    cat > /tmp/wpa_supplicant.conf <<EOF
+ctrl_interface=/var/run/wpa_supplicant
+update_config=1
+
+network={
+    ssid="$WIFI_SSID"
+    psk=$PSK
+}
+EOF
+    
+    # Stop iwd
+    systemctl stop iwd
+    sleep 1
+    
+    # Start wpa_supplicant
+    wpa_supplicant -B -i wlan0 -c /tmp/wpa_supplicant.conf
+    sleep 3
+    
+    # Get IP via dhcp
+    dhcpcd wlan0 &
+    sleep 5
+    
+    # Check connection
+    if ping -c 1 -W 2 8.8.8.8 &> /dev/null; then
+        echo -e "${GREEN}✓ WiFi connected successfully (wpa_supplicant)${NC}"
+        return 0
+    fi
+    
+    # All methods failed
+    echo -e "${RED}WiFi connection failed!${NC}"
+    echo -e "${YELLOW}Current network status:${NC}"
+    ip addr show wlan0
+    echo ""
+    echo -e "${YELLOW}Available networks:${NC}"
+    iwctl station wlan0 get-networks 2>/dev/null || iw dev wlan0 scan | grep SSID
+    echo ""
+    echo -e "${YELLOW}Troubleshooting:${NC}"
+    echo "  1. Verify SSID: '$WIFI_SSID'"
+    echo "  2. Check password is correct"
+    echo "  3. Ensure network is in range"
+    echo "  4. Try connecting manually:"
+    echo "     iwctl station wlan0 connect \"$WIFI_SSID\""
     echo ""
     read -p "Continue anyway? (y/n): " continue_anyway
     if [[ "$continue_anyway" != "y" ]]; then
