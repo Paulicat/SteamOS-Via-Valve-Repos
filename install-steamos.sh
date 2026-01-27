@@ -110,26 +110,111 @@ fi
 setup_wifi() {
     echo -e "${GREEN}Setting up WiFi...${NC}"
     
+    # Configure iwd
     cat > /etc/iwd/main.conf <<EOF
 [General]
 EnableNetworkConfiguration=true
 EOF
 
+    # Restart iwd service
     systemctl restart iwd
-    sleep 2
-    
-    iwctl station wlan0 scan
-    sleep 2
-    echo "$WIFI_PASSWORD" | iwctl station wlan0 connect "$WIFI_SSID"
     sleep 3
     
-    # Verify connection
-    if ! ping -c 1 8.8.8.8 &> /dev/null; then
-        echo -e "${RED}WiFi connection failed!${NC}"
-        echo -e "${YELLOW}Please check your SSID and password${NC}"
+    # Wait for iwd to be ready
+    echo -e "${YELLOW}Waiting for wireless interface...${NC}"
+    timeout=30
+    while ! iwctl device list 2>/dev/null | grep -q "wlan0" && [ $timeout -gt 0 ]; do
+        sleep 1
+        ((timeout--))
+    done
+    
+    if [ $timeout -eq 0 ]; then
+        echo -e "${RED}Error: wlan0 not found${NC}"
+        echo -e "${YELLOW}Available devices:${NC}"
+        iwctl device list
         exit 1
     fi
-    echo -e "${GREEN}✓ WiFi connected successfully${NC}"
+    
+    # Power on the device
+    iwctl device wlan0 set-property Powered on
+    sleep 1
+    
+    # Scan for networks
+    echo -e "${YELLOW}Scanning for networks...${NC}"
+    iwctl station wlan0 scan
+    sleep 5
+    
+    # Show available networks
+    echo -e "${YELLOW}Available networks:${NC}"
+    iwctl station wlan0 get-networks
+    
+    # Connect using iwctl's interactive mode or passphrase file
+    echo -e "${YELLOW}Connecting to $WIFI_SSID...${NC}"
+    
+    # Method 1: Using expect (if available)
+    if command -v expect &> /dev/null; then
+        expect <<EOF
+set timeout 30
+spawn iwctl station wlan0 connect "$WIFI_SSID"
+expect "Passphrase:"
+send "$WIFI_PASSWORD\r"
+expect eof
+EOF
+    else
+        # Method 2: Using wpa_passphrase and iwd config file
+        mkdir -p /var/lib/iwd
+        
+        # Generate PSK
+        PSK=$(wpa_passphrase "$WIFI_SSID" "$WIFI_PASSWORD" | grep -v '#psk' | grep 'psk=' | cut -d'=' -f2)
+        
+        # Create iwd network config
+        cat > "/var/lib/iwd/${WIFI_SSID}.psk" <<EOF
+[Security]
+PreSharedKey=$PSK
+
+[Settings]
+AutoConnect=true
+EOF
+        
+        # Restart iwd to pick up the config
+        systemctl restart iwd
+        sleep 3
+        
+        # Connect
+        iwctl station wlan0 connect "$WIFI_SSID"
+    fi
+    
+    # Wait for connection
+    echo -e "${YELLOW}Waiting for connection...${NC}"
+    sleep 5
+    
+    # Verify connection
+    attempt=0
+    max_attempts=10
+    while [ $attempt -lt $max_attempts ]; do
+        if ping -c 1 -W 2 8.8.8.8 &> /dev/null; then
+            echo -e "${GREEN}✓ WiFi connected successfully${NC}"
+            return 0
+        fi
+        ((attempt++))
+        echo -e "${YELLOW}Attempt $attempt/$max_attempts...${NC}"
+        sleep 2
+    done
+    
+    # Connection failed
+    echo -e "${RED}WiFi connection failed!${NC}"
+    echo -e "${YELLOW}Current status:${NC}"
+    iwctl station wlan0 show
+    echo ""
+    echo -e "${YELLOW}Please check:${NC}"
+    echo "  - SSID is correct: $WIFI_SSID"
+    echo "  - Password is correct"
+    echo "  - Network is in range"
+    echo ""
+    read -p "Continue anyway? (y/n): " continue_anyway
+    if [[ "$continue_anyway" != "y" ]]; then
+        exit 1
+    fi
 }
 
 setup_pacman_repos() {
