@@ -288,8 +288,9 @@ setup_pacman_repos() {
     # Backup original
     cp "$config_file" "${config_file}.backup"
     
-    # Enable parallel downloads
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' "$config_file"
+    # Enable parallel downloads and set to 10
+    sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' "$config_file"
+    sed -i 's/^ParallelDownloads.*/ParallelDownloads = 10/' "$config_file"
     
     # Comment out official repos
     sed -i '/^\[core\]/,/^$/s/^/#/' "$config_file"
