@@ -72,9 +72,22 @@ USERNAME=${USERNAME:-deck}
 # Swap Size
 echo ""
 echo -e "${YELLOW}Swap Configuration${NC}"
-echo "Examples: 8g, 16g, 32g"
-read -p "Swap file size [default: 8g]: " SWAP_SIZE
-SWAP_SIZE=${SWAP_SIZE:-8g}
+echo "Enter swap file size in GB (just the number)"
+echo "Examples: 8, 16, 32"
+
+while true; do
+    read -p "Swap file size in GB [default: 8]: " SWAP_SIZE_GB
+    SWAP_SIZE_GB=${SWAP_SIZE_GB:-8}
+    
+    # Validate it's a number
+    if [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]]; then
+        SWAP_SIZE="${SWAP_SIZE_GB}g"
+        echo -e "Swap size set to: ${GREEN}${SWAP_SIZE}${NC}"
+        break
+    else
+        echo -e "${RED}Please enter a valid number (e.g., 8, 16, 32)${NC}"
+    fi
+done
 
 # NoMachine
 echo ""
