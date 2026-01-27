@@ -55,7 +55,7 @@ Full control over your SteamOS installation
 
 Mutable system for tweaks, scripts, and customizations
 
-Currently only test on an official Steam Deck
+Currently only tested/used on an official Steam Deck
 
 ⚡ Author Notes
 I created this mainly for myself — but if you enjoy tinkering with SteamOS, this might save you some time.
