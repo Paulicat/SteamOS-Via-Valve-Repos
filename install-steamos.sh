@@ -424,12 +424,12 @@ passwd
 
 # Bootloader
 bootctl install
-cat > /boot/loader/loader.conf <<EOF
+cat > /boot/loader/loader.conf <<BOOTLOADER_EOF
 default    SteamOS
 timeout    3
 console-mode max
 editor     no
-EOF
+BOOTLOADER_EOF
 
 # Detect kernel
 KERNEL_PKG=\$(pacman -Qq | grep '^linux-neptune' | head -1)
@@ -438,12 +438,12 @@ if [ -z "\$KERNEL_PKG" ]; then
     exit 1
 fi
 
-cat > /boot/loader/entries/steamos.conf <<EOF
+cat > /boot/loader/entries/steamos.conf <<BOOTENTRY_EOF
 title   SteamOS
 linux   /vmlinuz-\${KERNEL_PKG}
 initrd  /initramfs-\${KERNEL_PKG}.img
 options root="LABEL=SteamOS" rw quiet compress=zstd splash loglevel=3 rd.systemd.show_status=false vt.global_cursor_default=0 rd.udev.log_level=3 nowatchdog clearcpuid=514 amd_iommu=off audit=0 rd.luks=0 rd.lvm=0 rd.md=0 rd.dm=0 log_buf_len=4M amd_pstate=active preempt=full
-EOF
+BOOTENTRY_EOF
 
 # Enable services
 systemctl enable NetworkManager bluetooth systemd-resolved sshd upower systemd-timesyncd jupiter-fan-control sddm
@@ -466,7 +466,7 @@ echo "/swap/swapfile none swap defaults 0 0" >> /etc/fstab
 
 # steamos-update stub
 rm -f /usr/bin/steamos-update
-cat > /usr/bin/steamos-update <<'EOF'
+cat > /usr/bin/steamos-update <<'UPDATE_EOF'
 #!/bin/bash
 if command -v frzr-deploy > /dev/null; then
     if [ "$1" == "check" ]; then
@@ -479,12 +479,12 @@ if command -v frzr-deploy > /dev/null; then
 else
     exit 7
 fi
-EOF
+UPDATE_EOF
 chmod +x /usr/bin/steamos-update
 
 # steamos-select-branch stub
 rm -f /usr/bin/steamos-select-branch
-cat > /usr/bin/steamos-select-branch <<'EOF'
+cat > /usr/bin/steamos-select-branch <<'BRANCH_EOF'
 #!/bin/bash
 STEAMOS_BRANCH_SCRIPT="/usr/lib/os-branch-select"
 if [ -f $STEAMOS_BRANCH_SCRIPT ]; then
@@ -492,7 +492,7 @@ if [ -f $STEAMOS_BRANCH_SCRIPT ]; then
 else
     echo "No branch script was found"
 fi
-EOF
+BRANCH_EOF
 chmod +x /usr/bin/steamos-select-branch
 
 echo "Chroot configuration complete!"
