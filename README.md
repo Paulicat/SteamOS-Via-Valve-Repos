@@ -37,14 +37,14 @@ Choose username (deck recommended for Decky Loader)
 
 Select target drive (e.g., nvme0n1 for internal storage)
 
-⚙️ Supported Versions
+⚙️ Supported Versions:
 SteamOS 3.6
 
 SteamOS 3.7
 
 Support for 3.8 will be added once it becomes official.
 
-🔄 Updating Your Installation
+🔄 Updating Your Installation:
 After installation, update packages to the latest in the current release branch:
 
 sudo pacman -Syu
