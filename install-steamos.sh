@@ -277,10 +277,28 @@ partition_disk() {
     
     echo -e "${GREEN}Partitioning disk...${NC}"
     
+    # Unmount if mounted
+    umount -R /mnt 2>/dev/null || true
+    
+    # Wipe existing partition table
+    wipefs -af "$DISK" 2>/dev/null || true
+    
+    # Create new GPT partition table
     parted -s "$DISK" mklabel gpt
-    parted -s "$DISK" mkpart "EFI system partition" fat32 1MiB 512MiB
+    
+    # Create EFI partition (1MiB to 512MiB)
+    parted -s "$DISK" mkpart primary 1MiB 512MiB
+    parted -s "$DISK" name 1 "EFI"
     parted -s "$DISK" set 1 esp on
-    parted -s "$DISK" mkpart "SteamOS" btrfs 537MiB 100%
+    
+    # Create root partition (537MiB to 100%)
+    parted -s "$DISK" mkpart primary 537MiB 100%
+    parted -s "$DISK" name 2 "SteamOS"
+    
+    # Wait for kernel to recognize partitions
+    sleep 2
+    partprobe "$DISK"
+    sleep 2
     
     echo -e "${GREEN}Formatting partitions...${NC}"
     
@@ -293,9 +311,10 @@ partition_disk() {
         PART2="${DISK}2"
     fi
     
+    # Format partitions
+    mkfs.fat -F 32 "$PART1"
     mkfs.btrfs -f "$PART2"
     btrfs filesystem label "$PART2" SteamOS
-    mkfs.fat -F 32 "$PART1"
     
     echo -e "${GREEN}Mounting partitions...${NC}"
     mount "$PART2" /mnt
@@ -303,6 +322,10 @@ partition_disk() {
     mount "$PART1" /mnt/boot
     
     echo -e "${GREEN}✓ Disk partitioned and mounted${NC}"
+    
+    # Show result
+    echo -e "${YELLOW}Partition layout:${NC}"
+    lsblk "$DISK"
 }
 
 install_packages() {
