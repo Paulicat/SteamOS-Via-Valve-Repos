@@ -24,8 +24,8 @@ It installs SteamOS from Valve’s official repositories for a **fully mutable s
 3. **Mount the second drive** somewhere convenient:
 
    ```bash
-   mount /dev/sdX1 /mnt
-   cd /mnt
+   mkdir -p /mnt/usb
+   mount /dev/sdX1 /mnt/usb
 Run the installer script:
 
 ./install-steamos.sh
