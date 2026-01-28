@@ -612,7 +612,7 @@ install_nomachine
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║     Installation Complete!            ║${NC}"
+echo -e "${GREEN}║     Installation Complete!                 ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
