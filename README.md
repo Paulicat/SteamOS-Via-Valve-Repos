@@ -45,6 +45,14 @@ Support for 3.8 will be added once it becomes official.
 
 🔄 Updating your installation after installation to the latest in the current release branch:
 
+sudo mount /boot and verify visibility of the kernel/initramfs. 
+Otherwise you will miss any kernel updates as by default /boot is not mounted.
+In case this was missed:
+Boot up archlinux iso and mount /dev/yourroot /mnt
+mount /dev/yourbootpartition /mnt/boot
+arch-chroot /mnt
+pacman -S linux-neptune-XXX (XXX being kernel version for your SteamOS version)
+
 sudo pacman -Syu
 This will keep your installation current until the repos are frozen for the next version.
 
