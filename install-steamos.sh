@@ -53,7 +53,7 @@ fi
 # SteamOS Version
 echo ""
 echo -e "${YELLOW}SteamOS Version${NC}"
-read -p "SteamOS version (e.g., 3.6, 3.7, 3.8) [default: 3.7]: " STEAMOS_VERSION
+read -p "SteamOS version (e.g., 3.5, 3.6, 3.7, 3.8) [default: 3.7]: " STEAMOS_VERSION
 STEAMOS_VERSION=${STEAMOS_VERSION:-3.7}
 
 # Timezone
@@ -411,6 +411,9 @@ install_packages() {
     echo -e "${GREEN}Installing latest kernel for your specific OS release${NC}"
 
     case "$STEAMOS_VERSION" in
+    3.5)
+        pacstrap -K /mnt --needed --noconfirm linux-neptune-61 linux-neptune-61-headers
+        ;;
     3.6)
         pacstrap -K /mnt --needed --noconfirm linux-neptune-65 linux-neptune-65-headers
         ;;
