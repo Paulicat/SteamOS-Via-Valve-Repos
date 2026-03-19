@@ -40,8 +40,7 @@ Select target drive (e.g., nvme0n1 for internal storage)
 ⚙️ Supported Versions:
 SteamOS 3.6
 SteamOS 3.7
-
-Support for 3.8 will be added once it becomes official.
+SteamOS 3.8
 
 🔄 Updating your installation after installation to the latest in the current release branch:
 
