@@ -53,8 +53,11 @@ fi
 # SteamOS Version
 echo ""
 echo -e "${YELLOW}SteamOS Version${NC}"
-read -p "SteamOS version (e.g., 3.5, 3.6, 3.7, 3.8) [default: 3.7]: " STEAMOS_VERSION
-STEAMOS_VERSION=${STEAMOS_VERSION:-3.7}
+echo -e "${YELLOW}Note: 3.8 is non-functional (kernel/repo issues) — use 3.8.1x instead.${NC}"
+read -p "SteamOS version (e.g., 3.5, 3.6, 3.7, 3.8.1x) [default: 3.8.1x]: " STEAMOS_VERSION
+STEAMOS_VERSION=${STEAMOS_VERSION:-3.8.1x}
+# Normalize to lowercase so "3.8.1X" and "3.8.1x" are treated the same
+STEAMOS_VERSION=$(echo "$STEAMOS_VERSION" | tr '[:upper:]' '[:lower:]')
 
 # Timezone
 echo ""
@@ -420,8 +423,21 @@ install_packages() {
     3.7)
         pacstrap -K /mnt --needed --noconfirm linux-neptune-611 linux-neptune-611-headers
         ;;
-    3.8)
+    # NOTE: 3.8 is non-functional (kernel/repo issues) - only 3.8.1x is supported
+    3.8.1x)
         pacstrap -K /mnt --needed --noconfirm linux-neptune-616 linux-neptune-616-headers
+        ;;
+    *)
+        echo -e "${RED}Warning: No kernel mapping for STEAMOS_VERSION='${STEAMOS_VERSION}'.${NC}"
+        echo -e "${YELLOW}Attempting to auto-detect the newest available linux-neptune package...${NC}"
+        AUTO_KERNEL=$(pacman -Ss '^linux-neptune-[0-9]' 2>/dev/null | grep '^jupiter\|^holo' | awk '{print $1}' | cut -d'/' -f2 | grep -v headers | sort -V | tail -1)
+        if [ -n "$AUTO_KERNEL" ]; then
+            echo -e "${GREEN}Found: ${AUTO_KERNEL}${NC}"
+            pacstrap -K /mnt --needed --noconfirm "$AUTO_KERNEL" "${AUTO_KERNEL}-headers"
+        else
+            echo -e "${RED}ERROR: Could not auto-detect a kernel package. Aborting.${NC}"
+            exit 1
+        fi
         ;;
     esac
     
@@ -431,7 +447,7 @@ install_packages() {
     3.7)
         pacstrap -K /mnt --needed --noconfirm steamos-powerbuttond || true
         ;;
-    3.8)
+    3.8.1x)
         pacstrap -K /mnt --needed --noconfirm steamos-powerbuttond plasma-x11-session steamos-manager || true
         ;;
     esac
