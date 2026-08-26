@@ -45,7 +45,7 @@ SteamOS 3.8.1x
 🔄 Updating your installation after installation to the latest in the current release branch:
 
 sudo mount /boot and verify visibility of the kernel/initramfs. 
-Otherwise you will miss any kernel updates as by default /boot is not mounted.
+Otherwise you will miss any kernel updates as by default /boot is not visible.
 In case this was missed:
 Boot up archlinux iso and mount /dev/yourroot /mnt
 mount /dev/yourbootpartition /mnt/boot
