@@ -1,6 +1,6 @@
 # 🕹️ Mutable SteamOS Installer
 
-![Platform](https://img.shields.io/badge/platform-SteamDeck%20%7C%20OneXPlayer-blue)
+![Platform](https://img.shields.io/badge/platform-SteamDeck%20%7C%20Generic%20Handheld-blue)
 ![Status](https://img.shields.io/badge/status-beta-yellow)
 
 This project provides an **Arch-style mutable installation of SteamOS**, originally designed for the OneXPlayer 2 and now adapted for the Steam Deck.  
