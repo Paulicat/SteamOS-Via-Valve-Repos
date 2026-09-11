@@ -83,24 +83,29 @@ read -p "Username [default: deck]: " USERNAME
 USERNAME=${USERNAME:-deck}
 
 # Swap Size
-echo ""
-echo -e "${YELLOW}Swap Configuration${NC}"
-echo "Enter swap file size in GB (just the number)"
-echo "Examples: 8, 16, 32"
+if [[ "$STEAMOS_VERSION" == "3.9" ]]; then
+    SWAP_SIZE=""
+    echo -e "${GREEN}Skipping swap configuration for SteamOS 3.9${NC}"
+else
+    echo ""
+    echo -e "${YELLOW}Swap Configuration${NC}"
+    echo "Enter swap file size in GB (just the number)"
+    echo "Examples: 8, 16, 32"
 
-while true; do
-    read -p "Swap file size in GB [default: 8]: " SWAP_SIZE_GB
-    SWAP_SIZE_GB=${SWAP_SIZE_GB:-8}
-    
-    # Validate it's a number
-    if [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]]; then
-        SWAP_SIZE="${SWAP_SIZE_GB}g"
-        echo -e "Swap size set to: ${GREEN}${SWAP_SIZE}${NC}"
-        break
-    else
-        echo -e "${RED}Please enter a valid number (e.g., 8, 16, 32)${NC}"
-    fi
-done
+    while true; do
+        read -p "Swap file size in GB [default: 8]: " SWAP_SIZE_GB
+        SWAP_SIZE_GB=${SWAP_SIZE_GB:-8}
+        
+        # Validate it's a number
+        if [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]]; then
+            SWAP_SIZE="${SWAP_SIZE_GB}g"
+            echo -e "Swap size set to: ${GREEN}${SWAP_SIZE}${NC}"
+            break
+        else
+            echo -e "${RED}Please enter a valid number (e.g., 8, 16, 32)${NC}"
+        fi
+    done
+fi
 
 # NoMachine
 echo ""
@@ -514,6 +519,7 @@ initrd  /initramfs-${KERNEL_PKG}.img
 options root="LABEL=SteamOS" rw quiet compress=zstd splash loglevel=3 rd.systemd.show_status=false vt.global_cursor_default=0 rd.udev.log_level=3 nowatchdog clearcpuid=514 amd_iommu=off audit=0 rd.luks=0 rd.lvm=0 rd.md=0 rd.dm=0 log_buf_len=4M amd_pstate=active preempt=full
 BOOT_EOF
 
+
 # Fix /tmp/.X11-unix losing its sticky bit (drwxrwxrwt) and being left
 # owned by the login user instead of root. Root cause: gamescope-session's
 # own wlserver code (xwayland/sockets.c) unconditionally recreates
@@ -523,6 +529,8 @@ BOOT_EOF
 # boot, so a normal tmpfiles.d rule can never win - gamescope-session
 # always overwrites it afterward. A path unit that watches for changes
 # and re-applies chmod 1777 is what actually works, confirmed by testing.
+# Version-specific service enablement
+if [ "__STEAMOS_VERSION__" = "3.9" ]; then
 cat > /etc/systemd/system/fix-x11-unix.path << 'PATH_UNIT_EOF'
 [Path]
 PathChanged=/tmp/.X11-unix
@@ -539,6 +547,7 @@ ExecStart=/usr/bin/chmod 1777 /tmp/.X11-unix
 SERVICE_UNIT_EOF
 
 systemctl enable fix-x11-unix.path
+fi
 
 # Enable services
 systemctl enable NetworkManager bluetooth systemd-resolved sshd upower systemd-timesyncd jupiter-fan-control sddm
@@ -576,6 +585,16 @@ passwd -d __USERNAME__
 
 # Sudoers
 sed -i 's/# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+
+# Swap file
+if [[ "__STEAMOS_VERSION__" == "3.9" ]]; then
+    echo "Skipping swap file creation for SteamOS 3.9"
+else
+    btrfs subvolume create /swap
+    btrfs filesystem mkswapfile --size __SWAP_SIZE__ --uuid clear /swap/swapfile
+    swapon /swap/swapfile
+    echo "/swap/swapfile none swap defaults 0 0" >> /etc/fstab
+fi
 
 # steamos-update stub
 rm -f /usr/bin/steamos-update
