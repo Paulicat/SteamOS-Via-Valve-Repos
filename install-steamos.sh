@@ -110,7 +110,7 @@ fi
 # NoMachine
 echo ""
 echo -e "${YELLOW}Optional Software${NC}"
-read -p "Install NoMachine remote desktop? (y/n) [default: n]: " INSTALL_NOMACHINE
+read -p "Install NoMachine remote desktop? Note: Doesn't work in 3.8.1x and 3.9 due to Wayland. (y/n) [default: n]: " INSTALL_NOMACHINE
 INSTALL_NOMACHINE=${INSTALL_NOMACHINE:-n}
 
 # Confirmation
