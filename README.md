@@ -21,7 +21,7 @@ It installs SteamOS from Valve’s official repositories for a **fully mutable s
 
 2. **Boot Arch Linux ISO** on your target device.
 
-3. **Unplug the Arch Linux usb boot device and replug it into the device, confirm usb device is /dev/sda1**
+3. **Unplug the Arch Linux usb boot device and reinsert it into the device, confirm usb device is /dev/sda1**
 
    ```bash
    mount /dev/sda1 /tmp
