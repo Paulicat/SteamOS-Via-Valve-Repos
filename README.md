@@ -13,22 +13,21 @@ It installs SteamOS from Valve’s official repositories for a **fully mutable s
 
 ## 🚀 Quick Start
 
-1. **Prepare two drives:**
-   - Drive 1: Arch Linux ISO (bootable)  
-   - Drive 2: Contains the installer script (`install-steamos.sh`)  
+1. **Prepare arch iso usb drive:**
+   - Drive 1: Arch Linux ISO (bootable)
+   - Once you've written the iso to the usb drive, copy the installer script to the root of the Arch Linux usb drive
 
    Optional: A USB hub with Ethernet for downloading the script directly.
 
 2. **Boot Arch Linux ISO** on your target device.
 
-3. **Mount the second drive** somewhere convenient:
+3. **Unplug the Arch Linux usb boot devie and replug it into the deck**
 
    ```bash
-   mkdir -p /mnt/usb
-   mount /dev/sdX1 /mnt/usb
+   mount /dev/sda1 /tmp
 Run the installer script:
 
-./install-steamos.sh
+/tmp/install-steamos.sh
 Follow the prompts:
 
 Connect to Wi-Fi
@@ -41,6 +40,9 @@ Select target drive (e.g., nvme0n1 for internal storage)
 SteamOS 3.6
 SteamOS 3.7
 SteamOS 3.8.1x
+SteamOS 3.9
+
+> ⚠️ **Note for 3.8.1x and 3.9 (steamos-manager):** Valve changed the method SteamOS uses to switch to Desktop Mode, and it now relies on `steamos-manager`. The **Steam client version currently available in the repos does not support this new method**. If you try to switch to Desktop Mode from the Steam power menu before updating the client, it will hang. Update the Steam client first (let it self-update once launched, or update via the Steam client's own update mechanism) before attempting to switch to Desktop Mode.
 
 🔄 Updating your installation after installation to the latest in the current release branch:
 
