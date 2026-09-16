@@ -110,7 +110,7 @@ fi
 # NoMachine
 echo ""
 echo -e "${YELLOW}Optional Software${NC}"
-read -p "Install NoMachine remote desktop? Note: Doesn't work in 3.8.1x and 3.9 due to Wayland. (y/n) [default: n]: " INSTALL_NOMACHINE
+read -p "Install NoMachine remote desktop? (y/n) [default: n]: " INSTALL_NOMACHINE
 INSTALL_NOMACHINE=${INSTALL_NOMACHINE:-n}
 
 # Confirmation
@@ -490,6 +490,15 @@ ln -sf /usr/share/zoneinfo/__TIMEZONE__ /etc/localtime
 hwclock --systohc
 echo "__HOSTNAME__" > /etc/hostname
 
+# vm.max_map_count override (Arch default is 65530; SteamOS uses this higher
+# value so Proton/Wine titles that mmap heavily - e.g. some Unity/UE5 games -
+# don't hit ENOMEM). Applied via sysctl.d drop-in, loaded by systemd-sysctl
+# at boot (or immediately with `sysctl --system`).
+mkdir -p /etc/sysctl.d
+cat > /etc/sysctl.d/99-max-map-count.conf << 'SYSCTL_EOF'
+vm.max_map_count=2147483642
+SYSCTL_EOF
+
 # Root password
 echo "root:__ROOT_PASSWORD__" | chpasswd
 
@@ -516,7 +525,7 @@ cat > /boot/loader/entries/steamos.conf << BOOT_EOF
 title   SteamOS
 linux   /vmlinuz-${KERNEL_PKG}
 initrd  /initramfs-${KERNEL_PKG}.img
-options root="LABEL=SteamOS" rw quiet compress=zstd splash loglevel=3 rd.systemd.show_status=false vt.global_cursor_default=0 rd.udev.log_level=3 nowatchdog clearcpuid=514 amd_iommu=off audit=0 rd.luks=0 rd.lvm=0 rd.md=0 rd.dm=0 log_buf_len=4M amd_pstate=active preempt=full
+options root="LABEL=SteamOS" rw quiet compress=zstd splash loglevel=3 rd.systemd.show_status=false vt.global_cursor_default=0 rd.udev.log_level=3 nowatchdog clearcpuid=514 amd_iommu=off audit=0 rd.luks=0 rd.lvm=0 rd.md=0 rd.dm=0 log_buf_len=4M amd_pstate=active preempt=full amdgpu.lockup_timeout=5000,10000,10000,5000 ttm.pages_min=2097152 amdgpu.sched_hw_submission=4 amdgpu.dcdebugmask=0x20000
 BOOT_EOF
 
 
